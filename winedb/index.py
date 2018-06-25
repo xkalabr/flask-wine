@@ -31,8 +31,9 @@ def list_years():
   retval = []
   result = engine.execute('SELECT DISTINCT yr FROM bottle ORDER BY yr DESC')
   for row in result:
-    if row[0] != 0:
-      retval.append(str(row[0]))
+    if row[0] == 0:
+      continue
+    retval.append(str(row[0]))
   return jsonify(retval)
 
 @app.route("/racks")
@@ -45,10 +46,10 @@ def list_racks():
 
 @app.route("/settings")
 def list_settings():
-  retval = []
+  retval = {}
   result = engine.execute('SELECT dname,dval from defs')
   for row in result:
-    retval.append({'name': row[0], 'value': row[1]})
+    retval[row[0]] = row[1]
   return jsonify(retval)
 
 @app.route("/regions")
