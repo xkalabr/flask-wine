@@ -39,9 +39,9 @@ def list_years():
 @app.route("/racks")
 def list_racks():
   retval = []
-  result = engine.execute('SELECT rid,name FROM racks ORDER BY name')
+  result = engine.execute('SELECT rid,name FROM racks ORDER BY rid')
   for row in result:
-    retval.append({'rid': row[0], 'name': row[1]})
+    retval.append({'id': row[0], 'name': row[1]})
   return jsonify(retval)
 
 @app.route("/settings")
@@ -55,7 +55,7 @@ def list_settings():
 @app.route("/regions")
 def list_regions():
   retval = []
-  result = engine.execute('SELECT id,regid,name FROM region ORDER BY regid')
+  result = engine.execute('SELECT id,name FROM region ORDER BY regid')
   for row in result:
-    retval.append({'id': row[0], 'regid': row[1], 'name': row[2]})
+    retval.append({'id': row[0], 'name': row[1]})
   return jsonify(retval)
