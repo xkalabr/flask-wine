@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
 from sqlalchemy import create_engine
+from winedb.model.query import Query, QuerySchema
 app = Flask(__name__)
 CORS(app)
 engine = create_engine('mysql+mysqlconnector://wineapp:pin0tNoir@localhost/wine')
@@ -58,4 +59,18 @@ def list_regions():
   result = engine.execute('SELECT id,name FROM region ORDER BY regid')
   for row in result:
     retval.append({'id': row[0], 'name': row[1]})
+  return jsonify(retval)
+
+@app.route('/query', methods=['POST'])
+def doSearch():
+  retval = []
+  query = QuerySchema().load(request.get_json())
+  print(query)
+  print(request.get_json())
+  #sql = (
+  #  'insert into inventory (cid,price,cond,indeck,isfoil) values (\'' + card.data.cid + '\''
+  #  ',' + str(card.data.price) + ',' + str(card.data.cond) + ',' + str(indeck) + ','
+  #  + str(isfoil) + ')'
+  #)
+  #engine.execute(sql)
   return jsonify(retval)
