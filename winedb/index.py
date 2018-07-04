@@ -77,7 +77,7 @@ def doSearch():
   for row in result:
     retval.append(packageData(row,query.data.show))
   if query.data.limit > 0:
-    retval = random.choice(retval)
+    retval = [random.choice(retval)]
   print(retval)
   return jsonify(retval)
 
