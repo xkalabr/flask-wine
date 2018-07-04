@@ -23,7 +23,7 @@ class QuerySchema(Schema):
   years = fields.List(fields.String)
   rack = fields.Number()
   show = fields.Str()
-  regions = fields.List(fields.Number)
+  regions = fields.List(fields.String)
   t = fields.Str()
   note = fields.Str()
   limit = fields.Number()

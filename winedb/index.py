@@ -2,6 +2,9 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
 from sqlalchemy import create_engine
 from winedb.model.query import Query, QuerySchema
+from datetime import datetime, timedelta
+import random
+
 app = Flask(__name__)
 CORS(app)
 engine = create_engine('mysql+mysqlconnector://wineapp:pin0tNoir@localhost/wine')
@@ -53,10 +56,13 @@ def list_settings():
     retval[row[0]] = row[1]
   return jsonify(retval)
 
-@app.route("/regions")
-def list_regions():
+@app.route("/regions/<string:formname>")
+def list_regions(formname):
   retval = []
-  result = engine.execute('SELECT id,name FROM region ORDER BY regid')
+  attr = 'id'
+  if formname == "search":
+    attr = 'regid'
+  result = engine.execute('SELECT ' + attr + ',name FROM region ORDER BY regid')
   for row in result:
     retval.append({'id': row[0], 'name': row[1]})
   return jsonify(retval)
@@ -65,12 +71,96 @@ def list_regions():
 def doSearch():
   retval = []
   query = QuerySchema().load(request.get_json())
-  print(query)
-  print(request.get_json())
-  #sql = (
-  #  'insert into inventory (cid,price,cond,indeck,isfoil) values (\'' + card.data.cid + '\''
-  #  ',' + str(card.data.price) + ',' + str(card.data.cond) + ',' + str(indeck) + ','
-  #  + str(isfoil) + ')'
-  #)
-  #engine.execute(sql)
+  sql = generateSql(query.data)
+  print(sql)
+  result = engine.execute(sql)
+  for row in result:
+    retval.append(packageData(row,query.data.show))
+  if query.data.limit > 0:
+    retval = random.choice(retval)
+  print(retval)
   return jsonify(retval)
+
+
+def generateSql(query):
+  sql = "SELECT DISTINCT bid,vineyard,yr,t,variety,desig,price,dbmin,drinkby,score,restr,note,da,dd,size"
+  if query.show == 'Current':
+    sql += ",r.name,pri,sec FROM bottle,loc,racks r,region rg WHERE bid=bot AND rid=rack AND reg=rg.id AND dd=0"
+  elif query.show == 'Drunk':
+    sql += " FROM bottle,region rg WHERE reg=rg.id AND dd>0"
+  elif query.show == 'Recent':
+    sql += ",r.name,pri,sec FROM bottle,loc,racks r,region rg WHERE bid=bot AND rid=rack AND da>'" + calcOldDate() + "' AND rg.id=reg AND dd=0"
+  else:
+    sql += " FROM bottle, region rg WHERE reg=rg.id AND dd>=0"
+
+  if len(query.note) > 0:
+    sql += " AND note LIKE '%" + query.note + "%'"
+  if 'A' not in query.t:
+    sql += " AND t='" + query.t + "'"
+
+  sql += parseQueryList(query.vineyards, "vineyard")
+  sql += parseQueryList(query.years, "yr")
+  sql += parseQueryList(query.varietals, "variety")
+  sql += parseQueryList(query.regions, "regid")
+
+  if query.rack > 0:
+    sql += " AND rid='" + str(int(query.rack)) + "' ORDER BY pri,sec"
+  else:
+    sql += " ORDER BY yr,vineyard,variety"
+  return sql
+
+#		/* Handle I'm Feeling Lucky button */
+#		if (req.getParameter("lucky") != null)
+#		{
+#			Bottle bot = foundBottles.get(randNum.nextInt(foundBottles.size()));
+#			foundBottles.clear();
+#			foundBottles.add(bot);
+#		}
+ #   return ''
+
+def packageData(bottle, show):
+  retval = {}
+  retval['id'] = bottle['bid']
+  retval['vineyard'] = bottle['vineyard']
+  retval['year'] = str(bottle['yr'])
+  retval['t'] = bottle['t']
+  retval['varietal'] = bottle['variety']
+  retval['desig'] = bottle['desig']
+  retval['price'] = str(bottle['price'])
+  retval['drinkmin'] = bottle['dbmin']
+  retval['drinkmax'] = bottle['drinkby']
+  retval['score'] = bottle['score']
+  retval['note'] = bottle['note']
+  retval['da'] = str(bottle['da'].year)
+  retval['drunk'] = bottle['dd'] != None
+  if retval['drunk']:
+    retval['restr'] = 'N'
+  else:
+    retval['restr'] = bottle['restr']
+  retval['size'] = bottle['size']
+  if show == 'Current' or show == 'Recent':
+    retval['rack'] = bottle['name']
+    retval['pri'] = bottle['pri']
+    retval['sec'] = bottle['sec']
+  else:
+    retval['rack'] = ''
+    retval['pri'] = ''
+    retval['sec'] = ''
+  return retval
+
+# Process the list query items
+def parseQueryList(attr, name):
+  retval = ''
+  if len(attr) > 0 and 'Any' not in attr:
+    for i, val in enumerate(attr):
+      if i == 0:
+        retval += " AND (" + name + " LIKE '" + val + "%'"
+      else:
+        retval += " OR " + name + " LIKE '" + val + "%'"
+    retval += ")"
+  return retval
+
+# Determine 30 days ago for Recent query
+def calcOldDate():
+  old_date = datetime.now() + timedelta(-30)
+  return str(old_date.year) + '-' + str(old_date.month).zfill(2) + '-' + str(old_date.day).zfill(2)
