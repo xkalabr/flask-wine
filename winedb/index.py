@@ -121,11 +121,11 @@ def generateSql(query):
 def packageData(bottle, show):
   retval = {}
   retval['id'] = bottle['bid']
-  retval['vineyard'] = bottle['vineyard']
+  retval['winery'] = bottle['vineyard']
   retval['year'] = str(bottle['yr'])
   retval['t'] = bottle['t']
   retval['varietal'] = bottle['variety']
-  retval['desig'] = bottle['desig']
+  retval['vineyard'] = bottle['desig']
   retval['price'] = str(bottle['price'])
   retval['drinkmin'] = bottle['dbmin']
   retval['drinkmax'] = bottle['drinkby']
