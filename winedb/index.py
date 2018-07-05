@@ -107,7 +107,10 @@ def generateSql(query):
   if len(query.note) > 0:
     sql += " AND note LIKE '%" + query.note + "%'"
   if 'A' not in query.t:
-    sql += " AND t='" + query.t + "'"
+    if 'S' in query.t:
+      sql += " AND spark='Y'"
+    else:
+      sql += " AND t='" + query.t + "'"
 
   sql += parseQueryList(query.vineyards, "vineyard")
   sql += parseQueryList(query.years, "yr")
