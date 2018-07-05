@@ -67,6 +67,15 @@ def list_regions(formname):
     retval.append({'id': row[0], 'name': row[1]})
   return jsonify(retval)
 
+@app.route('/drink/<string:id>', methods=['DELETE'])
+def drink_wine(id):
+  print('Deleting ' + id)
+  sql = 'delete from loc where bot=' + id
+  engine.execute(sql)
+  sql = 'update bottle set dd=NOW() where bid=' + id
+  engine.execute(sql)
+  return '', 204
+
 @app.route('/query', methods=['POST'])
 def doSearch():
   retval = []
@@ -84,14 +93,16 @@ def doSearch():
 
 def generateSql(query):
   sql = "SELECT DISTINCT bid,vineyard,yr,t,variety,desig,price,dbmin,drinkby,score,restr,note,da,dd,size"
-  if query.show == 'Current':
-    sql += ",r.name,pri,sec FROM bottle,loc,racks r,region rg WHERE bid=bot AND rid=rack AND reg=rg.id AND dd=0"
-  elif query.show == 'Drunk':
+  if query.show == 'Drunk':
     sql += " FROM bottle,region rg WHERE reg=rg.id AND dd>0"
-  elif query.show == 'Recent':
-    sql += ",r.name,pri,sec FROM bottle,loc,racks r,region rg WHERE bid=bot AND rid=rack AND da>'" + calcOldDate() + "' AND rg.id=reg AND dd=0"
   else:
-    sql += " FROM bottle, region rg WHERE reg=rg.id AND dd>=0"
+    sql += ",r.name,pri,sec FROM bottle left outer join loc on bid=bot left outer join racks r on rid=rack join region rg on reg=rg.id WHERE "
+  if query.show == 'Current':
+    sql += "dd=0"
+  elif query.show == 'Recent':
+    sql += "da>'" + calcOldDate() + "' AND dd=0"
+  else:
+    sql += "dd>=0"
 
   if len(query.note) > 0:
     sql += " AND note LIKE '%" + query.note + "%'"
@@ -109,15 +120,6 @@ def generateSql(query):
     sql += " ORDER BY yr,vineyard,variety"
   return sql
 
-#		/* Handle I'm Feeling Lucky button */
-#		if (req.getParameter("lucky") != null)
-#		{
-#			Bottle bot = foundBottles.get(randNum.nextInt(foundBottles.size()));
-#			foundBottles.clear();
-#			foundBottles.add(bot);
-#		}
- #   return ''
-
 def packageData(bottle, show):
   retval = {}
   retval['id'] = bottle['bid']
@@ -130,15 +132,18 @@ def packageData(bottle, show):
   retval['drinkmin'] = bottle['dbmin']
   retval['drinkmax'] = bottle['drinkby']
   retval['score'] = bottle['score']
-  retval['note'] = bottle['note']
+  if bottle['note'] != None:
+    retval['note'] = bottle['note']
+  else:
+    retval['note'] = ''
   retval['da'] = str(bottle['da'].year)
   retval['drunk'] = bottle['dd'] != None
   if retval['drunk']:
-    retval['restr'] = 'N'
+    retval['restricted'] = 'N'
   else:
-    retval['restr'] = bottle['restr']
+    retval['restricted'] = bottle['restr']
   retval['size'] = bottle['size']
-  if show == 'Current' or show == 'Recent':
+  if bottle['name'] != None:
     retval['rack'] = bottle['name']
     retval['pri'] = bottle['pri']
     retval['sec'] = bottle['sec']
