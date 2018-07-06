@@ -10,10 +10,6 @@ CORS(app)
 engine = create_engine('mysql+mysqlconnector://wineapp:pin0tNoir@localhost/wine')
 
 
-@app.route("/")
-def hello_world():
-  return "Hello, World!"
-
 @app.route("/vineyards")
 def list_vineyards():
 	retval = []
@@ -76,6 +72,37 @@ def drink_wine(id):
   engine.execute(sql)
   return '', 204
 
+@app.route('/bottles/', methods=['POST'])
+def add_bottle():
+	#card = InventorySchema().load(request.get_json())
+	#if card.data.price == '':
+	#	card.data.price = '0.00'
+	#sql = (
+#		'insert into inventory (cid,price,cond,indeck,isfoil) values (\'' + card.data.cid + '\''
+#		',' + str(card.data.price) + ',' + str(card.data.cond) + ',' + str(indeck) + ','
+#		+ str(isfoil) + ')'
+#	)
+#	engine.execute(sql)
+	return "", 204
+
+@app.route('/bottles/<string:id>', methods=['PUT'])
+def update_bottle(id):
+#	card = InventorySchema().load(request.get_json())
+#	sql = (
+#		'update inventory set price=' + str(card.data.price) + ',cond=' + str(card.data.cond)
+#		 + ',indeck=' + str(indeck) + ',isfoil=' + str(isfoil) + ' where id=' + id
+#	)
+#	engine.execute(sql)
+	return "", 204	
+
+@app.route('/bottles/<string:id>')
+def fetch_bottle(id):
+  retval = {}
+  sql = "SELECT bid,vineyard,yr,t,variety,desig,price,dbmin,drinkby,score,restr,note,reg,size,da,dd,rid as name,pri,sec FROM bottle left outer join loc on bid=bot left outer join racks r on rid=rack join region rg on reg=rg.id WHERE bid='" + id + "'"
+  result = engine.execute(sql)
+  for row in result:
+    return jsonify(packageData(row))
+
 @app.route('/query', methods=['POST'])
 def doSearch():
   retval = []
@@ -84,7 +111,7 @@ def doSearch():
   print(sql)
   result = engine.execute(sql)
   for row in result:
-    retval.append(packageData(row,query.data.show))
+    retval.append(packageData(row))
   if query.data.limit > 0:
     retval = [random.choice(retval)]
   print(retval)
@@ -92,7 +119,7 @@ def doSearch():
 
 
 def generateSql(query):
-  sql = "SELECT DISTINCT bid,vineyard,yr,t,variety,desig,price,dbmin,drinkby,score,restr,note,da,dd,size"
+  sql = "SELECT DISTINCT bid,vineyard,yr,t,variety,desig,price,dbmin,drinkby,score,restr,note,reg,da,dd,size"
   if query.show == 'Drunk':
     sql += " FROM bottle,region rg WHERE reg=rg.id AND dd>0"
   else:
@@ -107,10 +134,7 @@ def generateSql(query):
   if len(query.note) > 0:
     sql += " AND note LIKE '%" + query.note + "%'"
   if 'A' not in query.t:
-    if 'S' in query.t:
-      sql += " AND spark='Y'"
-    else:
-      sql += " AND t='" + query.t + "'"
+    sql += " AND t='" + query.t + "'"
 
   sql += parseQueryList(query.vineyards, "vineyard")
   sql += parseQueryList(query.years, "yr")
@@ -123,7 +147,7 @@ def generateSql(query):
     sql += " ORDER BY yr,vineyard,variety"
   return sql
 
-def packageData(bottle, show):
+def packageData(bottle):
   retval = {}
   retval['id'] = bottle['bid']
   retval['winery'] = bottle['vineyard']
@@ -146,6 +170,7 @@ def packageData(bottle, show):
   else:
     retval['restricted'] = bottle['restr']
   retval['size'] = bottle['size']
+  retval['region'] = bottle['reg']
   if bottle['name'] != None:
     retval['rack'] = bottle['name']
     retval['pri'] = bottle['pri']
